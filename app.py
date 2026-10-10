@@ -4,10 +4,10 @@ import streamlit as st
 from supabase import Client, create_client
 
 # Configurazione della pagina
-st.set_page_config(
+st.set_page_config (
 )
 
-    page_title="Il Mio Ricettario IA", layout="wide", page_icon="👨‍🍳"
+    page_title="Il Mio Ricettario IA", layout="wide", page_icon="📒"
 )
 st.title("🍳 Assistente & Ricettario Digitale")
 
