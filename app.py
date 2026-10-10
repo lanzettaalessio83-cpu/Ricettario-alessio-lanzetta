@@ -4,11 +4,12 @@ import streamlit as st
 from supabase import Client, create_client
 
 # Configurazione della pagina
-st.set_page_config (
+st.set_page_config(
+    page_title="Il Mio Ricettario IA",
+    page_icon="📖",
+    layout="wide"
 )
 
-    page_title="Il Mio Ricettario IA", layout="wide", page_icon="📒"
-)
 st.title("🍳 Assistente & Ricettario Digitale")
 
 # Lettura delle chiavi segrete da Streamlit Secrets
