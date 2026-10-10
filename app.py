@@ -5,7 +5,14 @@ from supabase import Client, create_client
 
 # Configurazione della pagina
 st.set_page_config(
-    page_title="Il Mio Ricettario IA", layout="wide", page_icon="👨‍🍳"
+st.markdown(
+    """
+    <link rel="apple-touch-icon" sizes="180x180" href="https://em-content.zobj.net/source/microsoft-teams/363/pot-of-food_1f372.png">
+    """,
+    unsafe_allow_html=True
+)
+
+    page_title="Il Mio Ricettario IA", layout="wide", page_icon="📒"
 )
 st.title("🍳 Assistente & Ricettario Digitale")
 
