@@ -7,7 +7,7 @@ from supabase import Client, create_client
 st.set_page_config(
 )
 
-    page_title="Il Mio Ricettario IA", layout="wide", page_icon="📒"
+    page_title="Il Mio Ricettario IA", layout="wide", page_icon="👨‍🍳"
 )
 st.title("🍳 Assistente & Ricettario Digitale")
 
