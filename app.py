@@ -1,5 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
+import google.generativeai as genai
 
 # Configurazione della pagina Streamlit
 st.set_page_config(
@@ -7,6 +8,13 @@ st.set_page_config(
     page_icon="📖",
     layout="centered"
 )
+
+# Configurazione di Gemini IA usando i secrets
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel("gemini-1.5-flash")
+except Exception:
+    model = None
 
 # Inizializzazione della connessione a Supabase usando i secrets configurati
 @st.cache_resource
@@ -20,13 +28,33 @@ supabase = init_connection()
 # Titolo principale dell'applicazione
 st.title("📖 Il Mio Ricettario")
 
-# Menu di navigazione tra le sezioni
-menu = st.sidebar.radio("Seleziona", ["Aggiungi Ricetta", "Elenco Ricette"])
+# Menu di navigazione tra le sezioni (incluso l'Assistente IA)
+menu = st.sidebar.radio("Seleziona", ["Elenco Ricette", "Aggiungi Ricetta", "Assistente Chef IA 🤖"])
 
 # ---------------------------------------------------------
-# SEZIONE 1: AGGIUNGI UNA NUOVA RICETTA
+# SEZIONE 1: ELENCO RICETTE
 # ---------------------------------------------------------
-if menu == "Aggiungi Ricetta":
+if menu == "Elenco Ricette":
+    st.header("Elenco delle Ricette")
+    
+    try:
+        response = supabase.table("recipes").select("*").execute()
+        ricette = response.data
+        
+        if not ricette:
+            st.info("Nessuna ricetta presente nel database. Inizia ad aggiungerne una!")
+        else:
+            for ricetta in ricette:
+                with st.expander(f"🍽️ {ricetta.get('title')} ({ricetta.get('category', 'Generale')})"):
+                    st.markdown(f"**Ingredienti:**\n{ricetta.get('ingredients')}")
+                    st.markdown(f"**Procedimento:**\n{ricetta.get('instructions')}")
+    except Exception as e:
+        st.error(f"Impossibile caricare le ricette da Supabase. Errore: {e}")
+
+# ---------------------------------------------------------
+# SEZIONE 2: AGGIUNGI UNA NUOVA RICETTA
+# ---------------------------------------------------------
+elif menu == "Aggiungi Ricetta":
     st.header("Aggiungi una nuova ricetta")
     
     with st.form("form_ricetta"):
@@ -56,7 +84,6 @@ if menu == "Aggiungi Ricetta":
                 st.warning("Per favore, compila tutti i campi obbligatori prima di salvare.")
             else:
                 try:
-                    # Inserimento dei dati nella tabella 'recipes' di Supabase
                     response = supabase.table("recipes").insert({
                         "title": titolo,
                         "category": categoria,
@@ -69,22 +96,24 @@ if menu == "Aggiungi Ricetta":
                     st.error(f"Errore durante il salvataggio su Supabase: {e}")
 
 # ---------------------------------------------------------
-# SEZIONE 2: ELENCO RICETTE
+# SEZIONE 3: ASSISTENTE CHEF IA
 # ---------------------------------------------------------
-elif menu == "Elenco Ricette":
-    st.header("Elenco delle Ricette")
+elif menu == "Assistente Chef IA 🤖":
+    st.header("Assistente Chef IA")
+    st.write("Chiedi consigli di cucina, abbinamenti, conversioni di dosi o idee per i tuoi piatti.")
     
-    try:
-        # Recupero delle ricette dal database Supabase
-        response = supabase.table("recipes").select("*").execute()
-        ricette = response.data
-        
-        if not ricette:
-            st.info("Nessuna ricetta presente nel database. Inizia ad aggiungerne una!")
-        else:
-            for ricetta in ricette:
-                with st.expander(f"🍽️ {ricetta.get('title')} ({ricetta.get('category', 'Generale')})"):
-                    st.markdown(f"**Ingredienti:**\n{ricetta.get('ingredients')}")
-                    st.markdown(f"**Procedimento:**\n{ricetta.get('instructions')}")
-    except Exception as e:
-        st.error(f"Impossibile caricare le ricette da Supabase. Verifica che la tabella esista. Errore: {e}")
+    if model is None:
+        st.warning("La chiave API di Gemini non è configurata correttamente nei Secrets.")
+    else:
+        prompt_utente = st.text_input("Cosa vuoi chiedere allo Chef IA?")
+        if st.button("Chiedi all'IA"):
+            if prompt_utente.strip():
+                with st.spinner("Lo chef sta pensando..."):
+                    try:
+                        risposta = model.generate_content(f"Agisci come uno chef professionista di alto livello. Rispondi a questa richiesta culinaria: {prompt_utente}")
+                        st.markdown("### Risposta dello Chef:")
+                        st.write(risposta.text)
+                    except Exception as e:
+                        st.error(f"Errore nella generazione della risposta: {e}")
+            else:
+                st.warning("Scrivi una domanda prima di inviare.")
