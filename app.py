@@ -68,7 +68,7 @@ with tab2:
           response = groq_client.chat.completions.create(
               messages=[{"role": "user", "content": prompt}],
               
-model="llama-3.1-8b-instant",
+ model="llama-3.1-8b-instant",
 
 
           )
