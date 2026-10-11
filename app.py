@@ -1,6 +1,6 @@
 import json
 import streamlit as st
-from groq import Groq
+from google import genai
 from supabase import Client, create_client
 
 # Configurazione della pagina
@@ -15,11 +15,11 @@ st.title("🍳 Assistente & Ricettario Digitale")
 # Lettura delle chiavi segrete da Streamlit Secrets
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 
 # Inizializzazione dei client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-groq_client = Groq(api_key=GROQ_API_KEY)
+ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Menu Laterale - Categorie
 st.sidebar.header("📁 Reparti Ricettario")
@@ -61,13 +61,13 @@ with tab_aggiungi:
                 Rispondi ESCLUSIVAMENTE con il codice JSON, senza testo aggiuntivo o markdown prima e dopo.
                 """
 
-                response = groq_client.chat.completions.create(
-                    messages=[{"role": "user", "content": prompt}],
-                    model="llama-3.3-70b-versatile",
+                response = ai_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
                 )
 
                 # Pulizia risposta JSON
-                raw_text = response.choices[0].message.content.strip()
+                raw_text = response.text.strip()
                 if raw_text.startswith("```json"):
                     raw_text = raw_text[7:]
                 if raw_text.endswith("```"):
