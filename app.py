@@ -68,7 +68,7 @@ with tab2:
           response = groq_client.chat.completions.create(
               messages=[{"role": "user", "content": prompt}],
               model="model="llama-3.3-70b-versatile",
-",
+
           )
 
           # Cleaning risposta JSON
