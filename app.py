@@ -6,7 +6,7 @@ import json
 # Configurazione pagina Streamlit
 st.set_page_config(page_title="Assistente & Ricettario Digitale", page_icon="🍳", layout="centered")
 
-# Legge le credenziali dai Secrets di Streamlit Cloud
+# Legge  credenziali dai Secrets di Streamlit Cloud
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
