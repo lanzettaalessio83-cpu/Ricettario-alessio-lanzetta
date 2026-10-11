@@ -5,16 +5,24 @@ from PIL import Image
 
 st.title("👨‍🍳 Ricettario Personale con IA")
 
-# --- CONFIGURAZIONE SECRETS & SUPABASE ---
+# --- CONFIGURAZIONE SECRETS SICURA ---
 try:
-    SUPABASE_URL = st.secrets["SUPABASE_URL"] if "SUPABASE_URL" in st.secrets else st.secrets["supabase"]["url"]
-    SUPABASE_KEY = st.secrets["SUPABASE_KEY"] if "SUPABASE_KEY" in st.secrets else st.secrets["supabase"]["key"]
-    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    SUPABASE_URL = st.secrets.get("SUPABASE_URL") or st.secrets.get("supabase", {}).get("url")
+    SUPABASE_KEY = st.secrets.get("SUPABASE_KEY") or st.secrets.get("supabase", {}).get("key")
+    GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+    
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        st.error("⚠️ Configurazione Supabase mancante nei Secrets.")
+        st.stop()
+        
+    if GEMINI_API_KEY:
+        genai.configure(api_key=GEMINI_API_KEY)
+    else:
+        st.warning("⚠️ GEMINI_API_KEY non trovata: le funzioni di IA saranno disattivate finché non la aggiungi nei Secrets.")
+        
 except Exception as e:
     st.error(f"⚠️ Errore di lettura Secrets: {e}")
     st.stop()
-
-genai.configure(api_key=GEMINI_API_KEY)
 
 @st.cache_resource
 def init_supabase() -> Client:
@@ -27,6 +35,8 @@ except Exception as e:
     st.stop()
 
 def analyze_recipe_with_ai(content, is_image=False):
+    if not GEMINI_API_KEY:
+        return "ERRORE: Chiave Gemini non configurata."
     model = genai.GenerativeModel("gemini-1.5-flash")
     prompt = """
     Analizza il contenuto fornito ed estrai le informazioni in modo strutturato:
