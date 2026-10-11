@@ -1,6 +1,6 @@
 import json
-from groq import Groq
 import streamlit as st
+from groq import Groq
 from supabase import Client, create_client
 
 # Configurazione della pagina
@@ -22,108 +22,87 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # Menu Laterale - Categorie
-st.sidebar.header("📂 Reparti Ricettario")
+st.sidebar.header("📁 Reparti Ricettario")
 categorie = [
     "Tutte",
     "Salse fredde",
     "Salse calde",
-    "Primi piatti caldi",
-    "Primi piatti freddi",
+    "Primi piatti",
     "Secondi piatti",
     "Dolci",
     "Contorni",
+    "Antipasti"
 ]
-categoria_scelta = st.sidebar.selectbox("Filtra per Categoria:", categorie)
+categoria_scelta = st.sidebar.selectbox("Filtra per reparto:", categorie)
 
-# Struttura ad Aste (Tab 1: Consultazione | Tab 2: Inserimento)
-tab1, tab2 = st.tabs(["📖 Consulta Ricettario", "➕ Aggiungi con IA"])
+# Struttura a tab per l'applicazione
+tab_consulta, tab_aggiungi = st.tabs(["📖 Consulta Ricettario", "➕ Aggiungi con IA"])
 
-with tab2:
-  st.subheader("Inserisci una ricetta o un appunto grezzo")
-  testo_grezzo = st.text_area(
-      "Incolla qui i tuoi appunti o il procedimento libero:",
-      height=180,
-      placeholder=(
-          "Es. Ho fatto 500g maionese con 4 tuorli, olio di semi a filo, limone"
-          " 20g, sale, montato ad immersione..."
-      ),
-  )
+with tab_aggiungi:
+    st.header("Inserisci una ricetta o un appunto grezzo")
+    testo_grezzo = st.text_area("Incolla qui i tuoi appunti o il procedimento libero:")
 
-  if st.button("🪄 Elabora e Salva con IA", type="primary"):
-    if testo_grezzo:
-      with st.spinner("L'assistente sta organizzando la scheda tecnica..."):
-        prompt = f"""
-                Sei un assistente di cucina professionale. Prendi il seguente testo ed estrai le informazioni organizzandole in un JSON valido con esattamente queste chiavi:
-                "titolo": nome della ricetta,
-                "categoria": scegli esattamente una tra ["Salse fredde", "Salse calde", "Primi piatti caldi", "Primi piatti freddi", "Secondi piatti", "Dolci", "Contorni"],
-                "ingredienti": elenco dettagliato di ingredienti e grammature/dosi,
-                "procedimento": passaggi ordinati e numerati della preparazione,
-                "note_tecniche": eventuali consigli, temperature, attrezzature o note di conservazione.
+    if st.button("🪄 Elabora e Salva con IA", type="primary"):
+        if not testo_grezzo.strip():
+            st.warning("Inserisci del testo prima di procedere.")
+        else:
+            try:
+                prompt = f"""
+                Analizza il seguente testo grezzo di una ricetta culinaria e strutturalo in formato JSON con le seguenti chiavi esatte:
+                - "titolo": nome della ricetta
+                - "categoria": una tra Salse fredde, Salse calde, Primi piatti, Secondi piatti, Dolci, Contorni, Antipasti
+                - "ingredienti": lista dettagliata degli ingredienti con dosi
+                - "procedimento": passaggi ordinati e numerati della preparazione
+                - "note_tecniche": eventuali consigli, temperature, attrezzature o note di conservazione.
 
-                Testo di partenza: {testo_grezzo}
+                Testo di partenza:
+                {testo_grezzo}
+
                 Rispondi ESCLUSIVAMENTE con il codice JSON, senza testo aggiuntivo o markdown prima e dopo.
                 """
 
-            try:
-        response = groq_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
-        )
+                response = groq_client.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model="llama-3.3-70b-versatile",
+                )
 
+                # Pulizia risposta JSON
+                raw_text = response.choices[0].message.content.strip()
+                if raw_text.startswith("```json"):
+                    raw_text = raw_text[7:]
+                if raw_text.endswith("```"):
+                    raw_text = raw_text[:-3]
 
-          # Cleaning risposta JSON
-          raw_text = response.choices[0].message.content.strip()
-          if raw_text.startswith("```json"):
-            raw_text = raw_text[7:]
-          if raw_text.endswith("```"):
-            raw_text = raw_text[:-3]
+                dati = json.loads(raw_text.strip())
 
-          dati = json.loads(raw_text.strip())
+                # Inserimento su Supabase
+                supabase.table("ricette").insert(dati).execute()
+                st.success("Ricetta elaborata e salvata con successo!")
 
-          # Inserimento su Supabase
-          supabase.table("ricette").insert(dati).execute()
-          st.success(
-              f"✅ Ricetta '{dati['titolo']}' salvata con successo nel reparto"
-              f" '{dati['categoria']}'!"
-          )
-        except Exception as e:
-          st.error(f"Errore durante l'elaborazione o il salvataggio: {e}")
-    else:
-        st.warning("Inserisci prima del testo da elaborare.")
+            except Exception as e:
+                st.error(f"Errore durante l'elaborazione o il salvataggio: {e}")
 
-with tab1:
-  st.subheader("Le Tue Ricette")
+with tab_consulta:
+    st.header("Elenco Ricette")
+    try:
+        query = supabase.table("ricette").select("*")
+        if categoria_scelta != "Tutte":
+            query = query.eq("categoria", categoria_scelta)
+        
+        response = query.execute()
+        ricette = response.data
 
-  # Query al database
-  if categoria_scelta == "Tutte":
-    query = (
-        supabase.table("ricette")
-        .select("*")
-        .order("id", desc=True)
-        .execute()
-    )
-  else:
-    query = (
-        supabase.table("ricette")
-        .select("*")
-        .eq("categoria", categoria_scelta)
-        .order("id", desc=True)
-        .execute()
-    )
-
-  ricette = query.data
-
-  if not ricette:
-    st.info("Nessuna ricetta trovata in questa sezione.")
-  else:
-    for r in ricette:
-      with st.expander(f"📌 {r['titolo']} — ({r['categoria']})"):
-        col1, col2 = st.columns(2)
-        with col1:
-          st.markdown("**🧂 Ingredienti:**")
-          st.write(r["ingredienti"])
-        with col2:
-          st.markdown("**👨‍🍳 Procedimento:**")
-          st.write(r["procedimento"])
-        if r.get("note_tecniche"):
-          st.info(f"💡 **Note Tecniche:** {r['note_tecniche']}")
+        if not ricette:
+            st.info("Nessuna ricetta trovata in questo reparto.")
+        else:
+            for r in ricette:
+                with st.expander(f"{r.get('titolo', 'Senza titolo')} ({r.get('categoria', 'Generale')})"):
+                    st.markdown("**Ingredienti:**")
+                    st.write(r.get('ingredienti', ''))
+                    st.markdown("**Procedimento:**")
+                    st.write(r.get('procedimento', ''))
+                    if r.get('note_tecniche'):
+                        st.markdown("**Note Tecniche:**")
+                        st.write(r.get('note_tecniche'))
+    except Exception as e:
+        st.error(f"Errore nel caricamento delle ricette da Supabase: {e}")
