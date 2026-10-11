@@ -1,6 +1,8 @@
 import streamlit as st
 from supabase import create_client, Client
 import google.generativeai as genai
+from PIL import Image
+import json
 
 # Configurazione della pagina Streamlit
 st.set_page_config(
@@ -28,7 +30,7 @@ supabase = init_connection()
 # Titolo principale dell'applicazione
 st.title("📖 Il Mio Ricettario")
 
-# Menu di navigazione tra le sezioni (incluso l'Assistente IA)
+# Menu di navigazione tra le sezioni
 menu = st.sidebar.radio("Seleziona", ["Elenco Ricette", "Aggiungi Ricetta", "Assistente Chef IA 🤖"])
 
 # ---------------------------------------------------------
@@ -52,68 +54,35 @@ if menu == "Elenco Ricette":
         st.error(f"Impossibile caricare le ricette da Supabase. Errore: {e}")
 
 # ---------------------------------------------------------
-# SEZIONE 2: AGGIUNGI UNA NUOVA RICETTA
+# SEZIONE 2: AGGIUNGI UNA NUOVA RICETTA (CON ASSISTENTE IA)
 # ---------------------------------------------------------
 elif menu == "Aggiungi Ricetta":
     st.header("Aggiungi una nuova ricetta")
     
-    with st.form("form_ricetta"):
-        titolo = st.text_input("Titolo della ricetta")
-        
-        categoria = st.selectbox(
-            "Categoria",
-            [
-                "Salse fredde", 
-                "Salse calde", 
-                "Primi piatti", 
-                "Secondi piatti", 
-                "Primi piatti caldi", 
-                "Primi piatti freddi", 
-                "Dolci", 
-                "Contorni"
-            ]
-        )
-        
-        ingredienti = st.text_area("Ingredienti (uno per riga o separati da virgola)")
-        istruzioni = st.text_area("Istruzioni / Procedimento")
-        
-        submit_button = st.form_submit_button(label="Salva Ricetta")
-        
-        if submit_button:
-            if titolo.strip() == "" or ingredienti.strip() == "" or istruzioni.strip() == "":
-                st.warning("Per favore, compila tutti i campi obbligatori prima di salvare.")
-            else:
-                try:
-                    response = supabase.table("recipes").insert({
-                        "title": titolo,
-                        "category": categoria,
-                        "ingredients": ingredienti,
-                        "instructions": istruzioni
-                    }).execute()
-                    
-                    st.success(f"Ricetta '{titolo}' salvata con successo!")
-                except Exception as e:
-                    st.error(f"Errore durante il salvataggio su Supabase: {e}")
+    # Inizializzazione dello stato per i campi se non esistono
+    if "titolo_auto" not in st.session_state:
+        st.session_state.titolo_auto = ""
+    if "categoria_auto" not in st.session_state:
+        st.session_state.categoria_auto = "Primi piatti"
+    if "ingredienti_auto" not in st.session_state:
+        st.session_state.ingredienti_auto = ""
+    if "istruzioni_auto" not in st.session_state:
+        st.session_state.istruzioni_auto = ""
 
-# ---------------------------------------------------------
-# SEZIONE 3: ASSISTENTE CHEF IA
-# ---------------------------------------------------------
-elif menu == "Assistente Chef IA 🤖":
-    st.header("Assistente Chef IA")
-    st.write("Chiedi consigli di cucina, abbinamenti, conversioni di dosi o idee per i tuoi piatti.")
+    # SEZIONE IA PER ANALISI TESTO O FOTO
+    st.subheader("🤖 Genera o Formattta con l'IA")
+    st.write("Puoi scrivere la ricetta in modo grezzo oppure caricare un'immagine/foto di una ricetta per compilarla in automatico!")
+
+    testo_grezzo = st.text_area("Inserisci testo grezzo della ricetta (opzionale)")
     
-    if model is None:
-        st.warning("La chiave API di Gemini non è configurata correttamente nei Secrets.")
-    else:
-        prompt_utente = st.text_input("Cosa vuoi chiedere allo Chef IA?")
-        if st.button("Chiedi all'IA"):
-            if prompt_utente.strip():
-                with st.spinner("Lo chef sta pensando..."):
-                    try:
-                        risposta = model.generate_content(f"Agisci come uno chef professionista di alto livello. Rispondi a questa richiesta culinaria: {prompt_utente}")
-                        st.markdown("### Risposta dello Chef:")
-                        st.write(risposta.text)
-                    except Exception as e:
-                        st.error(f"Errore nella generazione della risposta: {e}")
-            else:
-                st.warning("Scrivi una domanda prima di inviare.")
+    # Opzione per scattare una foto o caricare dalla galleria
+    fonte_immagine = st.radio("Metodo inserimento foto", ["Disattivo", "Galleria / File", "Fotocamera"], horizontal=True)
+    
+    immagine_caricata = None
+    if fonte_immagine == "Galleria / File":
+        immagine_caricata = st.file_uploader("Scegli un'immagine dalla galleria", type=["jpg", "jpeg", "png", "webp"])
+    elif fonte_immagine == "Fotocamera":
+        immagine_caricata = st.camera_input("Scatta una foto della ricetta")
+
+    if st.button("✨ Formatta / Estrai con IA"):
+        
