@@ -1,13 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
-import os
 
 # Configurazione della pagina Streamlit
 st.set_page_config(
     page_title="Ricettario alessio",
     page_icon="🍳",
-    layout="centered"
+    layout="wide"
 )
 
 # Configurazione della chiave API di Gemini dai Secrets di Streamlit
@@ -16,62 +15,121 @@ if "GEMINI_API_KEY" in st.secrets:
 else:
     st.error("⚠️ Chiave GEMINI_API_KEY non trovata nei secrets di Streamlit!")
 
+# Inizializzazione dello stato per memorizzare le ricette nella sessione
+if "ricette" not in st.session_state:
+    st.session_state.ricette = []
+
 st.title("🍳 Ricettario alessio")
-st.markdown("Gestisci e compila le tue ricette personali anche con l'ausilio dell'Intelligenza Artificiale.")
 
-# Sezione di inserimento / elaborazione ricetta
-st.subheader("Aggiungi o Elabora Ricetta")
+# Menu di navigazione laterale o tramite tab
+tab1, tab2 = st.tabs(["📖 Il mio Ricettario", "✨ Aggiungi / Modifica Ricetta"])
 
-titolo = st.text_input("Titolo della Ricetta")
-categoria = st.selectbox(
-    "Categoria", 
-    ["Salse fredde", "Salse calde", "Primi piatti", "Secondi piatti", "Dolci", "Contorni", "Antipasti"]
-)
-ingredienti = st.text_area("Ingredienti")
-procedimento = st.text_area("Procedimento")
+with tab2:
+    st.subheader("Inserisci o compila una ricetta con l'IA")
+    
+    # Sezione opzionale per l'IA con foto o testo di partenza
+    st.markdown("### 🤖 Assistente IA (Opzionale)")
+    scelta_foto = st.radio("Vuoi usare una foto per farti aiutare dall'IA?", ["No", "Galleria / File", "Fotocamera"], horizontal=True)
+    
+    immagine_caricata = None
+    if scelta_foto == "Galleria / File":
+        immagine_caricata = st.file_uploader("Carica l'immagine della ricetta", type=["jpg", "jpeg", "png"])
+    elif scelta_foto == "Fotocamera":
+        immagine_caricata = st.camera_input("Scatta una foto alla ricetta")
+        
+    testo_input_ia = st.text_area("Oppure scrivi due righe o incolla un testo da far sistemare all'IA:")
+    
+    # Stato temporaneo per i campi compilati dall'IA
+    if "temp_titolo" not in st.session_state:
+        st.session_state.temp_titolo = ""
+    if "temp_categoria" not in st.session_state:
+        st.session_state.temp_categoria = "Primi piatti"
+    if "temp_ingredienti" not in st.session_state:
+        st.session_state.temp_ingredienti = ""
+    if "temp_procedimento" not in st.session_state:
+        st.session_state.temp_procedimento = ""
 
-st.markdown("---")
-st.write("Vuoi aggiungere una foto o scattare una foto alla ricetta per compilarla automaticamente con l'IA?")
+    if st.button("✨ Elabora con IA e Compila i campi sotto"):
+        if not immagine_caricata and not testo_input_ia:
+            st.warning("⚠️ Carica un'immagine o inserisci del testo prima di avviare l'elaborazione IA.")
+        else:
+            try:
+                with st.spinner("L'intelligenza artificiale sta analizzando la ricetta..."):
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    prompt = (
+                        "Analizza la ricetta e restituisci la risposta divisa esattamente in questo formato:\n"
+                        "TITOLO: [Nome della ricetta]\n"
+                        "CATEGORIA: [Scegli tra: Salse fredde, Salse calde, Primi piatti, Secondi piatti, Dolci, Contorni, Antipasti]\n"
+                        "INGREDIENTI:\n[Elenco ingredienti]\n"
+                        "PROCEDIMENTO:\n[Passaggi del procedimento]"
+                    )
+                    
+                    if immagine_caricata:
+                        img = Image.open(immagine_caricata)
+                        response = model.generate_content([prompt, img])
+                    else:
+                        response = model.generate_content(f"{prompt}\n\nTesto:\n{testo_input_ia}")
+                    
+                    # Parsing rudimentale per riempire i campi
+                    testo_risposta = response.text
+                    st.success("✅ Dati estratti con successo! Controlla e modifica i campi qui sotto prima di salvare.")
+                    
+                    # Assegniamo ai campi temporanei (puoi comunque scriverci dentro liberamente)
+                    st.session_state.temp_titolo = testo_risposta.split("TITOLO:")[-1].split("CATEGORIA:")[0].strip()
+                    st.session_state.temp_ingredienti = testo_risposta.split("INGREDIENTI:")[-1].split("PROCEDIMENTO:")[0].strip()
+                    st.session_state.temp_procedimento = testo_risposta.split("PROCEDIMENTO:")[-1].strip()
+            except Exception as e:
+                st.error(f"Errore durante l'elaborazione IA: {e}")
 
-scelta_foto = st.radio("Vuoi aggiungere una foto?", ["No", "Galleria / File", "Fotocamera"], horizontal=True)
+    st.markdown("---")
+    st.subheader("✏️ Dettagli della Ricetta (Modificabili a mano)")
+    
+    # Campi di input liberi e modificabili dall'utente
+    titolo = st.text_input("Titolo della Ricetta", value=st.session_state.temp_titolo)
+    categoria = st.selectbox(
+        "Categoria", 
+        ["Salse fredde", "Salse calde", "Primi piatti", "Secondi piatti", "Dolci", "Contorni", "Antipasti"],
+        index=0
+    )
+    ingredienti = st.text_area("Ingredienti (puoi scrivere o correggere liberamente)", value=st.session_state.temp_ingredienti, height=150)
+    procedimento = st.text_area("Procedimento (puoi scrivere o correggere liberamente)", value=st.session_state.temp_procedimento, height=200)
 
-immagine_caricata = None
+    if st.button("💾 Salva nel Ricettario"):
+        if titolo.strip() == "":
+            st.error("⚠️ Inserisci un titolo per poter salvare la ricetta.")
+        else:
+            nuova_ricetta = {
+                "titolo": titolo,
+                "categoria": categoria,
+                "ingredienti": ingredienti,
+                "procedimento": procedimento
+            }
+            st.session_state.ricette.append(nuova_ricetta)
+            st.success(f"🎉 Ricetta '{titolo}' salvata con successo nel tuo ricettario!")
+            # Pulizia campi temporanei
+            st.session_state.temp_titolo = ""
+            st.session_state.temp_ingredienti = ""
+            st.session_state.temp_procedimento = ""
 
-if scelta_foto == "Galleria / File":
-    immagine_caricata = st.file_uploader("Carica l'immagine della ricetta", type=["jpg", "jpeg", "png"])
-elif scelta_foto == "Fotocamera":
-    immagine_caricata = st.camera_input("Scatta una foto alla ricetta")
-
-# Pulsante per elaborare con l'IA
-if st.button("✨ Elabora con IA e Compila"):
-    if not immagine_caricata and not ingredienti:
-        st.warning("⚠️ Carica un'immagine o inserisci del testo prima di avviare l'elaborazione IA.")
+with tab1:
+    st.subheader("📖 Consulta il tuo Ricettario Personale")
+    
+    if len(st.session_state.ricette) == 0:
+        st.info("Il tuo ricettario è ancora vuoto. Usa il tab 'Aggiungi / Modifica Ricetta' per inserire la prima ricetta!")
     else:
-        try:
-            with st.spinner("L'intelligenza artificiale sta analizzando la ricetta..."):
-                # Inizializziamo il modello Gemini
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                
-                prompt = (
-                    "Estrai da questa immagine o testo i dettagli della ricetta e restituisci "
-                    "esattamente in formato strutturato: Titolo, Ingredienti e Procedimento in lingua italiana."
-                )
-                
-                if immagine_caricata:
-                    img = Image.open(immagine_caricata)
-                    response = model.generate_content([prompt, img])
-                else:
-                    response = model.generate_content(f"{prompt}\n\nTesto di riferimento:\n{ingredienti}")
-                
-                st.success("✅ Ricetta elaborata con successo!")
-                st.write(response.text)
-                
-        except Exception as e:
-            st.error(f"Errore durante l'elaborazione IA: {e}")
-
-# Pulsante di salvataggio finale nel ricettario
-if st.button("Salva Ricetta nel Database"):
-    if titolo:
-        st.success(f"Ricetta '{titolo}' salvata correttamente nel tuo ricettario!")
-    else:
-        st.error("Inserisci almeno il titolo per poter salvare la ricetta.")
+        # Filtro per categoria
+        categorie_presenti = list(set(r["categoria"] for r in st.session_state.ricette))
+        filtro_cat = st.selectbox("Filtra per categoria", ["Tutte"] + categorie_presenti)
+        
+        for idx, r in enumerate(st.session_state.ricette):
+            if filtro_cat == "Tutte" or r["categoria"] == filtro_cat:
+                with st.expander(f"📌 {r['titolo']} ({r['categoria']})"):
+                    st.markdown(f"**Categoria:** {r['categoria']}")
+                    st.markdown("### 🛒 Ingredienti")
+                    st.text(r['ingredienti'])
+                    st.markdown("### 🍳 Procedimento")
+                    st.text(r['procedimento'])
+                    
+                    if st.button(f"🗑️ Elimina ricetta", key=f"del_{idx}"):
+                        st.session_state.ricette.pop(idx)
+                        st.rerun()
