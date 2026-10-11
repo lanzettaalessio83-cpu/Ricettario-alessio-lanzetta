@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from supabase import create_client, Client
 import json
+from PIL import Image
 
 st.set_page_config(page_title="Assistente & Ricettario Digitale", page_icon="🍳", layout="centered")
 
@@ -12,13 +13,13 @@ SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
+    # Usiamo il modello multimodale per accettare anche le immagini
     model = genai.GenerativeModel('gemini-3.8-flash')
 else:
     model = None
 
 st.title("🍳 Assistente & Ricettario Digitale")
 
-# Struttura a 3 Tab
 tab1, tab2, tab3 = st.tabs(["📖 Consulta Ricettario", "➕ Aggiungi con IA", "✍️ Inserimento Diretto"])
 
 # TAB 1: CONSULTA RICETTARIO
@@ -47,36 +48,50 @@ with tab1:
     except Exception as e:
         st.info("💡 Impossibile caricare l'elenco da Supabase in questo momento. Usa le schede di inserimento per aggiungere nuove ricette.")
 
-# TAB 2: AGGIUNGI CON IA
+# TAB 2: AGGIUNGI CON IA (TESTO O FOTO)
 with tab2:
-    st.header("Inserisci una ricetta o un appunto grezzo")
-    raw_text = st.text_area("Incolla qui i tuoi appunti o il procedimento libero:", height=150, key="ai_text")
+    st.header("Aggiungi con IA (Testo o Foto)")
     
+    input_method = st.radio("Scegli come inserire la ricetta:", ["Testo grezzo", "Carica / Scatta foto appunti"])
+    
+    raw_text = ""
+    uploaded_image = None
+    
+    if input_method == "Testo grezzo":
+        raw_text = st.text_area("Incolla qui i tuoi appunti:", height=150)
+    else:
+        uploaded_image = st.file_uploader("Scatta una foto o seleziona dalla galleria:", type=["jpg", "jpeg", "png"])
+        if uploaded_image:
+            image = Image.open(uploaded_image)
+            st.image(image, caption="Foto caricata", use_container_width=True)
+
     if st.button("🪄 Elabora e Salva con IA", type="primary"):
-        if not raw_text.strip():
-            st.warning("Inserisci prima del testo per elaborare la ricetta!")
+        if input_method == "Testo grezzo" and not raw_text.strip():
+            st.warning("Inserisci prima del testo!")
+        elif input_method == "Carica / Scatta foto appunti" and not uploaded_image:
+            st.warning("Carica prima una foto!")
         elif not model:
             st.error("Chiave GEMINI_API_KEY non configurata.")
         else:
             with st.spinner("Elaborazione in corso con Gemini..."):
                 try:
-                    prompt = f"""
-                    Estrai le informazioni strutturate dal seguente testo grezzo di una ricetta.
+                    prompt = """
+                    Estrai le informazioni strutturate da questa ricetta (presente nel testo o nell'immagine).
                     Rispondi ESCLUSIVAMENTE con un oggetto JSON valido con queste chiavi:
                     - "title": stringa con il nome della ricetta
                     - "category": stringa con la categoria (es. Antipasti, Primi, Secondi, Dolci, Salse)
                     - "ingredients": lista di stringhe con ingredienti e dosi
                     - "instructions": stringa con il procedimento dettagliato passo dopo passo
-
-                    Testo grezzo:
-                    {raw_text}
                     """
                     
-                    res = model.generate_content(prompt)
+                    if input_method == "Testo grezzo":
+                        res = model.generate_content(prompt + f"\nTesto:\n{raw_text}")
+                    else:
+                        res = model.generate_content([prompt, image])
+                        
                     clean_res = res.text.strip().removeprefix("```json").removesuffix("```").strip()
                     data = json.loads(clean_res)
                     
-                    # Salvataggio su Supabase
                     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
                     supabase.table("recipes").insert({
                         "title": data.get("title", "Nuova Ricetta"),
@@ -88,7 +103,7 @@ with tab2:
                     st.success(f"Ricetta '{data.get('title')}' elaborata e salvata con successo!")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Errore durante l'elaborazione o il salvataggio: {e}")
+                    st.error(f"Errore durante l'elaborazione: {e}")
 
 # TAB 3: INSERIMENTO DIRETTO (MANUALE)
 with tab3:
