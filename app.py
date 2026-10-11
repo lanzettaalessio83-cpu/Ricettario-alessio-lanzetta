@@ -106,3 +106,4 @@ with tab_consulta:
                         st.write(r.get('note_tecniche'))
     except Exception as e:
         st.error(f"Errore nel caricamento delle ricette da Supabase: {e}")
+
