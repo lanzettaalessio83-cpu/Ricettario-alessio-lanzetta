@@ -1,6 +1,6 @@
 import json
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 from supabase import Client, create_client
 
 # Configurazione della pagina
@@ -19,7 +19,8 @@ GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 
 # Inizializzazione dei client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-ai_client = genai.Client(api_key=GEMINI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 # Menu Laterale - Categorie
 st.sidebar.header("📁 Reparti Ricettario")
@@ -61,10 +62,7 @@ with tab_aggiungi:
                 Rispondi ESCLUSIVAMENTE con il codice JSON, senza testo aggiuntivo o markdown prima e dopo.
                 """
 
-                response = ai_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                )
+                response = model.generate_content(prompt)
 
                 # Pulizia risposta JSON
                 raw_text = response.text.strip()
