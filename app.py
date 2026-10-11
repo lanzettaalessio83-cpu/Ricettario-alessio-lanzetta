@@ -64,14 +64,12 @@ with tab2:
                 Rispondi ESCLUSIVAMENTE con il codice JSON, senza testo aggiuntivo o markdown prima e dopo.
                 """
 
-        try:
-          response = groq_client.chat.completions.create(
-              messages=[{"role": "user", "content": prompt}],
-              
-              model="llama-3.1-8b-instant",
+            try:
+        response = groq_client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+        )
 
-
-          )
 
           # Cleaning risposta JSON
           raw_text = response.choices[0].message.content.strip()
