@@ -7,11 +7,11 @@ st.title("👨‍🍳 Ricettario Personale con IA")
 
 # --- CONFIGURAZIONE SECRETS & SUPABASE ---
 try:
-    SUPABASE_URL = st.secrets["supabase"]["url"]
-    SUPABASE_KEY = st.secrets["supabase"]["key"]
+    SUPABASE_URL = st.secrets["SUPABASE_URL"] if "SUPABASE_URL" in st.secrets else st.secrets["supabase"]["url"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"] if "SUPABASE_KEY" in st.secrets else st.secrets["supabase"]["key"]
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 except Exception as e:
-    st.error("⚠️ Configurazione Secrets mancante o errata. Verifica di aver impostato [supabase] (url, key) e GEMINI_API_KEY.")
+    st.error(f"⚠️ Errore di lettura Secrets: {e}")
     st.stop()
 
 genai.configure(api_key=GEMINI_API_KEY)
