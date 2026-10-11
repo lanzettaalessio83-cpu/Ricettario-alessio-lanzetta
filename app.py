@@ -68,3 +68,4 @@ with tab2:
                     st.write(recipe.get('instructions'))
     except Exception as e:
         st.error(f"Errore nel recupero delle ricette: {e}")
+
