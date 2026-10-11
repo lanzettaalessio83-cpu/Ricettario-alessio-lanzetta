@@ -1,19 +1,15 @@
 import streamlit as st
-import google.generativeai as genai
 from supabase import create_client, Client
 
-# Configurazione della pagina Streamlit
-st.set_page_config(page_title="Ricettario Personale", page_icon="👨‍🍳", layout="centered")
+st.title("👨‍🍳 Ricettario Personale")
 
-# Recupero delle credenziali dai Secrets di Streamlit
-GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+try:
+    SUPABASE_URL = st.secrets["supabase"]["url"]
+    SUPABASE_KEY = st.secrets["supabase"]["key"]
+except Exception as e:
+    st.error("⚠️ Configurazione Secrets mancante. Aggiungi la sezione [supabase] nel pannello di Streamlit Cloud.")
+    st.stop()
 
-# Inizializzazione di Gemini AI
-genai.configure(api_key=GEMINI_API_KEY)
-
-# Inizializzazione del client Supabase una sola volta in cima allo script
 @st.cache_resource
 def init_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -24,54 +20,39 @@ except Exception as e:
     st.error(f"Errore di connessione a Supabase: {e}")
     st.stop()
 
-st.title("👨‍🍳 Ricettario Personale")
-
-# Navigazione tramite schede (Tab)
 tab1, tab2 = st.tabs(["➕ Aggiungi Ricetta", "📖 Le Mie Ricette"])
 
 with tab1:
-    st.header("Inserimento Diretto")
-    
-    with st.form("add_recipe_form", clear_on_submit=True):
-        manual_title = st.text_input("Titolo della Ricetta")
-        manual_category = st.selectbox("Categoria", [
-            "Salse e Condimenti", 
-            "Primi Piatti", 
-            "Secondi Piatti", 
-            "Contorni", 
-            "Dolci"
-        ])
-        manual_ingredients = st.text_area("Ingredienti (uno per riga)")
-        manual_instructions = st.text_area("Procedimento")
+    st.header("Nuova Ricetta")
+    with st.form("recipe_form", clear_on_submit=True):
+        title = st.text_input("Titolo della Ricetta")
+        category = st.selectbox(
+            "Categoria", 
+            ["Antipasti", "Primi Piatti", "Secondi Piatti", "Contorni", "Salse e Condimenti", "Dolci"]
+        )
+        ingredients = st.text_area("Ingredienti (uno per riga)")
+        instructions = st.text_area("Procedimento")
         
-        submitted = st.form_submit_button("💾 Salva Ricetta Diretta")
+        submitted = st.form_submit_button("💾 Salva Ricetta")
         
         if submitted:
-            if manual_title and manual_ingredients and manual_instructions:
-                try:
-                    # Formattazione lista ingredienti
-                    ingredients_list = "\n".join([
-                        line.strip() for line in manual_ingredients.split("\n") if line.strip()
-                    ])
-                    
-                    # Inserimento dati nel database Supabase
-                    response = supabase.table("recipes").insert({
-                        "title": manual_title,
-                        "category": manual_category,
-                        "ingredients": ingredients_list,
-                        "instructions": manual_instructions
-                    }).execute()
-                    
-                    st.success(f"Ricetta '{manual_title}' salvata con successo nel ricettario!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Errore durante il salvataggio diretto: {e}")
+            if not title or not ingredients or not instructions:
+                st.warning("Per favore, compila tutti i campi.")
             else:
-                st.warning("Per favore compila tutti i campi obbligatori!")
+                try:
+                    data = {
+                        "title": title,
+                        "category": category,
+                        "ingredients": ingredients,
+                        "instructions": instructions
+                    }
+                    supabase.table("recipes").insert(data).execute()
+                    st.success(f"Ricetta '{title}' salvata con successo!")
+                except Exception as e:
+                    st.error(f"Errore durante il salvataggio: {e}")
 
 with tab2:
     st.header("Elenco Ricette")
-    
     try:
         response = supabase.table("recipes").select("*").order("created_at", desc=True).execute()
         recipes = response.data
@@ -82,8 +63,8 @@ with tab2:
             for recipe in recipes:
                 with st.expander(f"📌 {recipe.get('title')} ({recipe.get('category')})"):
                     st.subheader("Ingredienti")
-                    st.text(recipe.get("ingredients"))
+                    st.write(recipe.get('ingredients'))
                     st.subheader("Procedimento")
-                    st.write(recipe.get("instructions"))
+                    st.write(recipe.get('instructions'))
     except Exception as e:
         st.error(f"Errore nel recupero delle ricette: {e}")
