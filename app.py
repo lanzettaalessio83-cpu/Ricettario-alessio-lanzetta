@@ -63,7 +63,7 @@ with tab_aggiungi:
 
                 response = groq_client.chat.completions.create(
                     messages=[{"role": "user", "content": prompt}],
-                    model="llama-3.1-8b-instant",
+                    model="llama3-8b-8192",
                 )
 
                 # Pulizia risposta JSON
@@ -105,6 +105,4 @@ with tab_consulta:
                         st.markdown("**Note Tecniche:**")
                         st.write(r.get('note_tecniche'))
     except Exception as e:
-        st.error(f"Errore nel caricamento delle ricette da Supabase: {e}"
-)
-
+        st.error(f"Errore nel caricamento delle ricette da Supabase: {e}")
