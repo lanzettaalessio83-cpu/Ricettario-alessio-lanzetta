@@ -1,6 +1,7 @@
-streamlit
-supabase
-google-generativeai
+import json
+import streamlit as st
+import google.generativeai as genai
+from supabase import Client, create_client
 
 # Configurazione della pagina
 st.set_page_config(
@@ -19,7 +20,7 @@ GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 # Inizializzazione dei client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.5-flash")
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 # Menu Laterale - Categorie
 st.sidebar.header("📁 Reparti Ricettario")
