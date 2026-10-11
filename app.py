@@ -1,78 +1,90 @@
 import streamlit as st
 from supabase import create_client, Client
 
-# --- INIZIALIZZAZIONE SUPABASE ---
-# Recupero sicuro delle credenziali dai secrets di Streamlit
+# Configurazione della pagina Streamlit
+st.set_page_config(
+    page_title="Il Mio Ricettario",
+    page_icon="📖",
+    layout="centered"
+)
+
+# Inizializzazione della connessione a Supabase usando i secrets configurati
 @st.cache_resource
-def init_supabase() -> Client:
+def init_connection() -> Client:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-supabase = init_supabase()
+supabase = init_connection()
 
-# --- INTERFACCIA STREAMLIT ---
+# Titolo principale dell'applicazione
 st.title("📖 Il Mio Ricettario")
 
-tab1, tab2 = st.tabs(["Aggiungi Ricetta", "Elenco Ricette"])
+# Menu di navigazione tra le sezioni
+menu = st.sidebar.radio("Seleziona", ["Aggiungi Ricetta", "Elenco Ricette"])
 
-# TAB 1: Inserimento nuova ricetta
-with tab1:
+# ---------------------------------------------------------
+# SEZIONE 1: AGGIUNGI UNA NUOVA RICETTA
+# ---------------------------------------------------------
+if menu == "Aggiungi Ricetta":
     st.header("Aggiungi una nuova ricetta")
     
-    with st.form("recipe_form", clear_on_submit=True):
-        title = st.text_input("Titolo della ricetta")
-        category = st.selectbox(
-            "Categoria", 
-            ["Salse fredde", "Salse calde", "Antipasti", "Primi piatti", "Secondi piatti", "Dolci", "Contorni"]
+    with st.form("form_ricetta"):
+        titolo = st.text_input("Titolo della ricetta")
+        
+        categoria = st.selectbox(
+            "Categoria",
+            [
+                "Salse fredde", 
+                "Salse calde", 
+                "Primi piatti", 
+                "Secondi piatti", 
+                "Primi piatti caldi", 
+                "Primi piatti freddi", 
+                "Dolci", 
+                "Contorni"
+            ]
         )
-        ingredients = st.text_area("Ingredienti (uno per riga o separati da virgola)")
-        instructions = st.text_area("Istruzioni / Procedimento")
         
-        submitted = st.form_submit_button("Salva Ricetta")
+        ingredienti = st.text_area("Ingredienti (uno per riga o separati da virgola)")
+        istruzioni = st.text_area("Istruzioni / Procedimento")
         
-        if submitted:
-            if not title.strip():
-                st.warning("Inserisci almeno il titolo della ricetta!")
+        submit_button = st.form_submit_button(label="Salva Ricetta")
+        
+        if submit_button:
+            if titolo.strip() == "" or ingredienti.strip() == "" or istruzioni.strip() == "":
+                st.warning("Per favore, compila tutti i campi obbligatori prima di salvare.")
             else:
-                data = {
-                    "title": title,
-                    "category": category,
-                    "ingredients": ingredients,
-                    "instructions": instructions
-                }
-                
                 try:
-                    # Inserimento dati nella tabella 'recipes' di Supabase
-                    supabase.table("recipes").insert(data).execute()
-                    st.success(f"Ricetta '{title}' salvata con successo!")
+                    # Inserimento dei dati nella tabella 'recipes' di Supabase
+                    response = supabase.table("recipes").insert({
+                        "title": titolo,
+                        "category": categoria,
+                        "ingredients": ingredienti,
+                        "instructions": istruzioni
+                    }).execute()
+                    
+                    st.success(f"Ricetta '{titolo}' salvata con successo!")
                 except Exception as e:
-                    st.error(f"Errore durante il salvataggio: {e}")
+                    st.error(f"Errore durante il salvataggio su Supabase: {e}")
 
-# TAB 2: Visualizzazione elenco ricette
-with tab2:
-    st.header("Elenco Ricette")
+# ---------------------------------------------------------
+# SEZIONE 2: ELENCO RICETTE
+# ---------------------------------------------------------
+elif menu == "Elenco Ricette":
+    st.header("Elenco delle Ricette")
     
     try:
-        # Recupero di tutte le ricette ordinate per titolo
-        response = supabase.table("recipes").select("*").order("title").execute()
-        recipes = response.data
+        # Recupero delle ricette dal database Supabase
+        response = supabase.table("recipes").select("*").execute()
+        ricette = response.data
         
-        if not recipes:
-            st.info("Nessuna ricetta presente nel database.")
+        if not ricette:
+            st.info("Nessuna ricetta presente nel database. Inizia ad aggiungerne una!")
         else:
-            # Filtro per categoria
-            categories = ["Tutte"] + list(set(r.get("category", "") for r in recipes if r.get("category")))
-            selected_cat = st.selectbox("Filtra per categoria", categories)
-            
-            for recipe in recipes:
-                if selected_cat == "Tutte" or recipe.get("category") == selected_cat:
-                    with st.expander(f"📌 {recipe.get('title', 'Senza titolo')} ({recipe.get('category', 'Generale')})"):
-                        st.subheader("Ingredienti")
-                        st.write(recipe.get("ingredients", "Nessun ingrediente specificato."))
-                        
-                        st.subheader("Istruzioni")
-                        st.write(recipe.get("instructions", "Nessuna istruzione fornita."))
-                        
+            for ricetta in ricette:
+                with st.expander(f"🍽️ {ricetta.get('title')} ({ricetta.get('category', 'Generale')})"):
+                    st.markdown(f"**Ingredienti:**\n{ricetta.get('ingredients')}")
+                    st.markdown(f"**Procedimento:**\n{ricetta.get('instructions')}")
     except Exception as e:
-        st.error(f"Errore nel caricamento delle ricette: {e}")
+        st.error(f"Impossibile caricare le ricette da Supabase. Verifica che la tabella esista. Errore: {e}")
