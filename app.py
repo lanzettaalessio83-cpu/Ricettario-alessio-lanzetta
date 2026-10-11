@@ -1,7 +1,6 @@
-import json
-import streamlit as st
-import google.generativeai as genai
-from supabase import Client, create_client
+streamlit
+supabase
+google-generativeai
 
 # Configurazione della pagina
 st.set_page_config(
