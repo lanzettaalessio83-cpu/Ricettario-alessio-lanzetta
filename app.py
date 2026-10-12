@@ -54,7 +54,7 @@ with tab2:
         else:
             try:
                 with st.spinner("L'intelligenza artificiale sta analizzando la ricetta..."):
-                    model = genai.GenerativeModel('gemini-2.5-flash')
+                    model = genai.GenerativeModel('gemini-2.0-flash')
                     prompt = (
                         "Analizza la ricetta e restituisci la risposta divisa esattamente in questo formato:\n"
                         "TITOLO: [Nome della ricetta]\n"
