@@ -10,19 +10,19 @@ import os
 TITOLO_APP = "ricettario personale alessio"
 # ==============================================================================
 
-# Configurazione della pagina Streamlit (usiamo l'emoji per la scheda del browser)
+# Configurazione della pagina Streamlit (punta al file favicon.jpg per l'icona del browser e della home)
 st.set_page_config(
     page_title="Ricettario - Alessio Lanzetta",
-    page_icon="📖",
+    page_icon="favicon.jpg",
     layout="wide"
 )
 
 # Visualizzazione del Logo nella barra laterale (Sidebar)
 with st.sidebar:
-    if os.path.exists("Logo.jpg"):
+    if os.path.exists("favicon.jpg"):
+        st.image("favicon.jpg", use_container_width=True)
+    elif os.path.exists("Logo.jpg"):
         st.image("Logo.jpg", use_container_width=True)
-    elif os.path.exists("logo.jpg"):
-        st.image("logo.jpg", use_container_width=True)
     st.markdown("---")
 
 # Configurazione della chiave API di Gemini dai Secrets di Streamlit
@@ -57,10 +57,10 @@ if "ricette" not in st.session_state:
 # Intestazione principale con il Logo e il Titolo
 col_logo, col_titolo = st.columns([1, 4])
 with col_logo:
-    if os.path.exists("Logo.jpg"):
+    if os.path.exists("favicon.jpg"):
+        st.image("favicon.jpg", width=120)
+    elif os.path.exists("Logo.jpg"):
         st.image("Logo.jpg", width=120)
-    elif os.path.exists("logo.jpg"):
-        st.image("logo.jpg", width=120)
 with col_titolo:
     st.title("Ricettario Personale Alessio Lanzetta 🔪📒")
 
