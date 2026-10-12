@@ -4,10 +4,18 @@ from PIL import Image
 import json
 import os
 
+# ==============================================================================
+# 🎨 PERSONALIZZA QUI TITOLO E ICONE
+# ==============================================================================
+TITOLO_APP = "ricettario personale alessio🔪📒"
+ICONA_PAGINA = "🔪"    # Icona visibile nella scheda del browser (o nome file tipo "logo.png")
+ICONA_TITOLO = ""      # Icona visibile accanto al titolo (già presente nel titolo)
+# ==============================================================================
+
 # Configurazione della pagina Streamlit
 st.set_page_config(
-    page_title="Ricettario alessio",
-    page_icon="🍳",
+    page_title=TITOLO_APP,
+    page_icon=ICONA_PAGINA,
     layout="wide"
 )
 
@@ -40,7 +48,8 @@ def salva_ricette(ricette):
 if "ricette" not in st.session_state:
     st.session_state.ricette = carica_ricette()
 
-st.title("🍳 Ricettario alessio")
+# Titolo principale
+st.title(f"{TITOLO_APP}")
 
 # Menu a schede
 tab1, tab2 = st.tabs(["📖 Il mio Ricettario", "✨ Aggiungi / Modifica Ricetta"])
@@ -122,7 +131,7 @@ with tab2:
                 "procedimento": procedimento
             }
             st.session_state.ricette.append(nuova_ricetta)
-            salva_ricette(st.session_state.ricette)  # Salvataggio permanente su file
+            salva_ricette(st.session_state.ricette)
             st.success(f"🎉 Ricetta '{titolo}' salvata con successo e memorizzata in modo permanente!")
             st.session_state.temp_titolo = ""
             st.session_state.temp_ingredienti = ""
@@ -148,5 +157,5 @@ with tab1:
                     
                     if st.button(f"🗑️ Elimina ricetta", key=f"del_{idx}"):
                         st.session_state.ricette.pop(idx)
-                        salva_ricette(st.session_state.ricette)  # Aggiorna il file dopo l'eliminazione
+                        salva_ricette(st.session_state.ricette)
                         st.rerun()
