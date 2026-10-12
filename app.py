@@ -143,19 +143,40 @@ with tab1:
     if len(st.session_state.ricette) == 0:
         st.info("Il tuo ricettario è ancora vuoto. Aggiungi la tua prima ricetta dal tab a fianco!")
     else:
-        categorie_presenti = list(set(r["categoria"] for r in st.session_state.ricette))
-        filtro_cat = st.selectbox("Filtra per categoria", ["Tutte"] + categorie_presenti)
+        # Aggiunta della barra di ricerca e del filtro per categoria affiancati
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            ricerca_query = st.text_input("🔍 Cerca ricetta (per nome o ingrediente):", "").lower()
+        with col2:
+            categorie_presenti = list(set(r["categoria"] for r in st.session_state.ricette))
+            filtro_cat = st.selectbox("Filtra per categoria", ["Tutte"] + categorie_presenti)
         
-        for idx, r in enumerate(st.session_state.ricette):
-            if filtro_cat == "Tutte" or r["categoria"] == filtro_cat:
-                with st.expander(f"📌 {r['titolo']} ({r['categoria']})"):
-                    st.markdown(f"**Categoria:** {r['categoria']}")
-                    st.markdown("### 🛒 Ingredienti")
-                    st.text(r['ingredienti'])
-                    st.markdown("### 🍳 Procedimento")
-                    st.text(r['procedimento'])
-                    
-                    if st.button(f"🗑️ Elimina ricetta", key=f"del_{idx}"):
-                        st.session_state.ricette.pop(idx)
-                        salva_ricette(st.session_state.ricette)
-                        st.rerun()
+        # Filtriamo le ricette in base alla ricerca e alla categoria selezionata
+        ricette_filtrate = []
+        for r in st.session_state.ricette:
+            match_categoria = (filtro_cat == "Tutte" or r["categoria"] == filtro_cat)
+            match_query = (
+                ricerca_query in r["titolo"].lower() or 
+                ricerca_query in r["ingredienti"].lower() or 
+                ricerca_query in r["procedimento"].lower()
+            )
+            if match_categoria and match_query:
+                ricette_filtrate.append(r)
+        
+        if len(ricette_filtrate) == 0:
+            st.warning("Nessuna ricetta corrisponde alla ricerca o al filtro selezionato.")
+        else:
+            for idx, r in enumerate(st.session_state.ricette):
+                # Mostriamo solo quelle che passano il filtro
+                if r in ricette_filtrate:
+                    with st.expander(f"📌 {r['titolo']} ({r['categoria']})"):
+                        st.markdown(f"**Categoria:** {r['categoria']}")
+                        st.markdown("### 🛒 Ingredienti")
+                        st.text(r['ingredienti'])
+                        st.markdown("### 🍳 Procedimento")
+                        st.text(r['procedimento'])
+                        
+                        if st.button(f"🗑️ Elimina ricetta", key=f"del_{idx}"):
+                            st.session_state.ricette.pop(idx)
+                            salva_ricette(st.session_state.ricette)
+                            st.rerun()
