@@ -30,10 +30,9 @@ if "GEMINI_API_KEY" in st.secrets:
 else:
     st.error("⚠️ Chiave GEMINI_API_KEY non trovata nei secrets di Streamlit!")
 
-# File per la persistenza dei dati
 FILE_RICETTE = "ricette.json"
 
-# Ricette predefinite per garantire che non vadano mai perse
+# Le tue ricette base garantite
 RICETTE_BASE = [
     {
         "titolo": "Crema di parmigiano 46 mesi",
@@ -56,17 +55,24 @@ RICETTE_BASE = [
 ]
 
 def carica_ricette():
+    ricette_salvate = []
     if os.path.exists(FILE_RICETTE):
         try:
             with open(FILE_RICETTE, "r", encoding="utf-8") as f:
                 dati = json.load(f)
-                if isinstance(dati, list) and len(dati) > 0:
-                    return dati
+                if isinstance(dati, list):
+                    ricette_salvate = dati
         except Exception:
             pass
-    # Se il file non esiste o è vuoto, usa e salva le ricette base
-    salva_ricette(RICETTE_BASE)
-    return RICETTE_BASE
+
+    # Uniamo le ricette base con quelle già presenti nel file senza creare duplicati
+    titoli_esistenti = [r.get("titolo", "").lower() for r in ricette_salvate]
+    for r_base in RICETTE_BASE:
+        if r_base["titolo"].lower() not in titoli_esistenti:
+            ricette_salvate.append(r_base)
+
+    salva_ricette(ricette_salvate)
+    return ricette_salvate
 
 def salva_ricette(ricette):
     try:
@@ -180,6 +186,7 @@ with tab1:
             ricerca_query = st.text_input("🔍 Cerca ricetta (per nome o ingrediente):", "").lower()
         with col2:
             categorie_presenti = list(set(r.get("categoria", "Altro") for r in ricette_correnti))
+            # Impostiamo di default la voce "Tutte"
             filtro_cat = st.selectbox("Filtra per categoria", ["Tutte"] + categorie_presenti)
         
         ricette_filtrate = []
