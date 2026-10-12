@@ -5,27 +5,28 @@ import json
 import os
 
 # ==============================================================================
-# 🎨 PERSONALIZZA QUI TITOLO E ICONE
+# 🎨 CONFIGURAZIONE PAGINA
 # ==============================================================================
 TITOLO_APP = "ricettario personale alessio"
-# ==============================================================================
 
-# Configurazione della pagina Streamlit (punta al file favicon.jpg per l'icona del browser e della home)
 st.set_page_config(
     page_title="Ricettario - Alessio Lanzetta",
-    page_icon="favicon.jpg",
+    page_icon="📖",
     layout="wide"
 )
 
-# Visualizzazione del Logo nella barra laterale (Sidebar)
+# Gestione del logo della barra laterale in totale sicurezza
 with st.sidebar:
-    if os.path.exists("favicon.jpg"):
-        st.image("favicon.jpg", use_container_width=True)
-    elif os.path.exists("Logo.jpg"):
-        st.image("Logo.jpg", use_container_width=True)
+    for nome_file in ["favicon.jpg", "Logo.jpg", "logo.jpg", "logo.png"]:
+        if os.path.exists(nome_file):
+            try:
+                st.image(nome_file, use_container_width=True)
+                break
+            except Exception:
+                pass
     st.markdown("---")
 
-# Configurazione della chiave API di Gemini dai Secrets di Streamlit
+# Configurazione della chiave API di Gemini dai Secrets
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
@@ -50,19 +51,12 @@ def salva_ricette(ricette):
     except Exception as e:
         st.error(f"Errore durante il salvataggio su file: {e}")
 
-# Inizializzazione dello stato con i dati caricati dal file permanente
+# Inizializzazione dello stato
 if "ricette" not in st.session_state:
     st.session_state.ricette = carica_ricette()
 
-# Intestazione principale con il Logo e il Titolo
-col_logo, col_titolo = st.columns([1, 4])
-with col_logo:
-    if os.path.exists("favicon.jpg"):
-        st.image("favicon.jpg", width=120)
-    elif os.path.exists("Logo.jpg"):
-        st.image("Logo.jpg", width=120)
-with col_titolo:
-    st.title("Ricettario Personale Alessio Lanzetta 🔪📒")
+# Titolo principale
+st.title("Ricettario Personale Alessio Lanzetta 🔪📒")
 
 # Menu a schede
 tab1, tab2 = st.tabs(["📖 Il mio Ricettario", "✨ Aggiungi / Modifica Ricetta"])
@@ -81,7 +75,6 @@ with tab2:
         
     testo_input_ia = st.text_area("Oppure scrivi due righe o incolla un testo da far sistemare all'IA:")
     
-    # Stato temporaneo per i campi compilati
     if "temp_titolo" not in st.session_state:
         st.session_state.temp_titolo = ""
     if "temp_categoria" not in st.session_state:
@@ -145,7 +138,7 @@ with tab2:
             }
             st.session_state.ricette.append(nuova_ricetta)
             salva_ricette(st.session_state.ricette)
-            st.success(f"🎉 Ricetta '{titolo}' salvata con successo e memorizzata in modo permanente!")
+            st.success(f"🎉 Ricetta '{titolo}' salvata con successo!")
             st.session_state.temp_titolo = ""
             st.session_state.temp_ingredienti = ""
             st.session_state.temp_procedimento = ""
@@ -154,7 +147,7 @@ with tab1:
     st.subheader("📖 Consulta il tuo Ricettario Personale")
     
     if len(st.session_state.ricette) == 0:
-        st.info("Il tuo ricettario è ancora vuoto. Aggiungi la tua prima ricetta dal tab a fianco!")
+        st.info("Il tuo ricettario è attualmente vuoto o in fase di ricaricamento.")
     else:
         col1, col2 = st.columns([2, 1])
         with col1:
