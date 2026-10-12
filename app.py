@@ -1,6 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+import json
+import os
 
 # Configurazione della pagina Streamlit
 st.set_page_config(
@@ -15,9 +17,28 @@ if "GEMINI_API_KEY" in st.secrets:
 else:
     st.error("⚠️ Chiave GEMINI_API_KEY non trovata nei secrets di Streamlit!")
 
-# Inizializzazione dello stato per memorizzare le ricette nella sessione
+# File per la persistenza dei dati
+FILE_RICETTE = "ricette.json"
+
+def carica_ricette():
+    if os.path.exists(FILE_RICETTE):
+        try:
+            with open(FILE_RICETTE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+def salva_ricette(ricette):
+    try:
+        with open(FILE_RICETTE, "w", encoding="utf-8") as f:
+            json.dump(ricette, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Errore durante il salvataggio su file: {e}")
+
+# Inizializzazione dello stato con i dati caricati dal file permanente
 if "ricette" not in st.session_state:
-    st.session_state.ricette = []
+    st.session_state.ricette = carica_ricette()
 
 st.title("🍳 Ricettario alessio")
 
@@ -101,7 +122,8 @@ with tab2:
                 "procedimento": procedimento
             }
             st.session_state.ricette.append(nuova_ricetta)
-            st.success(f"🎉 Ricetta '{titolo}' salvata con successo nel tuo ricettario!")
+            salva_ricette(st.session_state.ricette)  # Salvataggio permanente su file
+            st.success(f"🎉 Ricetta '{titolo}' salvata con successo e memorizzata in modo permanente!")
             st.session_state.temp_titolo = ""
             st.session_state.temp_ingredienti = ""
             st.session_state.temp_procedimento = ""
@@ -126,4 +148,5 @@ with tab1:
                     
                     if st.button(f"🗑️ Elimina ricetta", key=f"del_{idx}"):
                         st.session_state.ricette.pop(idx)
+                        salva_ricette(st.session_state.ricette)  # Aggiorna il file dopo l'eliminazione
                         st.rerun()
