@@ -21,13 +21,12 @@ if "ricette" not in st.session_state:
 
 st.title("🍳 Ricettario alessio")
 
-# Menu di navigazione laterale o tramite tab
+# Menu a schede
 tab1, tab2 = st.tabs(["📖 Il mio Ricettario", "✨ Aggiungi / Modifica Ricetta"])
 
 with tab2:
     st.subheader("Inserisci o compila una ricetta con l'IA")
     
-    # Sezione opzionale per l'IA con foto o testo di partenza
     st.markdown("### 🤖 Assistente IA (Opzionale)")
     scelta_foto = st.radio("Vuoi usare una foto per farti aiutare dall'IA?", ["No", "Galleria / File", "Fotocamera"], horizontal=True)
     
@@ -39,7 +38,7 @@ with tab2:
         
     testo_input_ia = st.text_area("Oppure scrivi due righe o incolla un testo da far sistemare all'IA:")
     
-    # Stato temporaneo per i campi compilati dall'IA
+    # Stato temporaneo per i campi compilati
     if "temp_titolo" not in st.session_state:
         st.session_state.temp_titolo = ""
     if "temp_categoria" not in st.session_state:
@@ -50,12 +49,13 @@ with tab2:
         st.session_state.temp_procedimento = ""
 
     if st.button("✨ Elabora con IA e Compila i campi sotto"):
-        if not immagine_caricata and not testo_input_ia:
+        if not immagine_caricata and not testo_input_ia.strip():
             st.warning("⚠️ Carica un'immagine o inserisci del testo prima di avviare l'elaborazione IA.")
         else:
             try:
                 with st.spinner("L'intelligenza artificiale sta analizzando la ricetta..."):
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # Modello aggiornato a gemini-2.5-flash
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                     prompt = (
                         "Analizza la ricetta e restituisci la risposta divisa esattamente in questo formato:\n"
                         "TITOLO: [Nome della ricetta]\n"
@@ -70,29 +70,26 @@ with tab2:
                     else:
                         response = model.generate_content(f"{prompt}\n\nTesto:\n{testo_input_ia}")
                     
-                    # Parsing rudimentale per riempire i campi
                     testo_risposta = response.text
                     st.success("✅ Dati estratti con successo! Controlla e modifica i campi qui sotto prima di salvare.")
                     
-                    # Assegniamo ai campi temporanei (puoi comunque scriverci dentro liberamente)
-                    st.session_state.temp_titolo = testo_risposta.split("TITOLO:")[-1].split("CATEGORIA:")[0].strip()
-                    st.session_state.temp_ingredienti = testo_risposta.split("INGREDIENTI:")[-1].split("PROCEDIMENTO:")[0].strip()
-                    st.session_state.temp_procedimento = testo_risposta.split("PROCEDIMENTO:")[-1].strip()
+                    st.session_state.temp_titolo = testo_risposta.split("TITOLO:")[-1].split("CATEGORIA:")[0].strip() if "TITOLO:" in testo_risposta else ""
+                    st.session_state.temp_ingredienti = testo_risposta.split("INGREDIENTI:")[-1].split("PROCEDIMENTO:")[0].strip() if "INGREDIENTI:" in testo_risposta else ""
+                    st.session_state.temp_procedimento = testo_risposta.split("PROCEDIMENTO:")[-1].strip() if "PROCEDIMENTO:" in testo_risposta else testo_risposta
             except Exception as e:
                 st.error(f"Errore durante l'elaborazione IA: {e}")
 
     st.markdown("---")
     st.subheader("✏️ Dettagli della Ricetta (Modificabili a mano)")
     
-    # Campi di input liberi e modificabili dall'utente
     titolo = st.text_input("Titolo della Ricetta", value=st.session_state.temp_titolo)
     categoria = st.selectbox(
         "Categoria", 
         ["Salse fredde", "Salse calde", "Primi piatti", "Secondi piatti", "Dolci", "Contorni", "Antipasti"],
         index=0
     )
-    ingredienti = st.text_area("Ingredienti (puoi scrivere o correggere liberamente)", value=st.session_state.temp_ingredienti, height=150)
-    procedimento = st.text_area("Procedimento (puoi scrivere o correggere liberamente)", value=st.session_state.temp_procedimento, height=200)
+    ingredienti = st.text_area("Ingredienti (modificabili liberamente)", value=st.session_state.temp_ingredienti, height=150)
+    procedimento = st.text_area("Procedimento (modificabile liberamente)", value=st.session_state.temp_procedimento, height=200)
 
     if st.button("💾 Salva nel Ricettario"):
         if titolo.strip() == "":
@@ -106,7 +103,6 @@ with tab2:
             }
             st.session_state.ricette.append(nuova_ricetta)
             st.success(f"🎉 Ricetta '{titolo}' salvata con successo nel tuo ricettario!")
-            # Pulizia campi temporanei
             st.session_state.temp_titolo = ""
             st.session_state.temp_ingredienti = ""
             st.session_state.temp_procedimento = ""
@@ -115,21 +111,10 @@ with tab1:
     st.subheader("📖 Consulta il tuo Ricettario Personale")
     
     if len(st.session_state.ricette) == 0:
-        st.info("Il tuo ricettario è ancora vuoto. Usa il tab 'Aggiungi / Modifica Ricetta' per inserire la prima ricetta!")
+        st.info("Il tuo ricettario è ancora vuoto. Aggiungi la tua prima ricetta dal tab a fianco!")
     else:
-        # Filtro per categoria
         categorie_presenti = list(set(r["categoria"] for r in st.session_state.ricette))
         filtro_cat = st.selectbox("Filtra per categoria", ["Tutte"] + categorie_presenti)
         
         for idx, r in enumerate(st.session_state.ricette):
-            if filtro_cat == "Tutte" or r["categoria"] == filtro_cat:
-                with st.expander(f"📌 {r['titolo']} ({r['categoria']})"):
-                    st.markdown(f"**Categoria:** {r['categoria']}")
-                    st.markdown("### 🛒 Ingredienti")
-                    st.text(r['ingredienti'])
-                    st.markdown("### 🍳 Procedimento")
-                    st.text(r['procedimento'])
-                    
-                    if st.button(f"🗑️ Elimina ricetta", key=f"del_{idx}"):
-                        st.session_state.ricette.pop(idx)
-                        st.rerun()
+            if filtro_cat == "T
