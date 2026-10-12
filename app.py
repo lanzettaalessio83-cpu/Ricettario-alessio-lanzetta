@@ -7,15 +7,13 @@ import os
 # ==============================================================================
 # 🎨 CONFIGURAZIONE PAGINA
 # ==============================================================================
-TITOLO_APP = "ricettario personale alessio"
-
 st.set_page_config(
     page_title="Ricettario - Alessio Lanzetta",
     page_icon="📖",
     layout="wide"
 )
 
-# Gestione del logo della barra laterale in totale sicurezza
+# Gestione del logo della barra laterale
 with st.sidebar:
     for nome_file in ["favicon.jpg", "Logo.jpg", "logo.jpg", "logo.png"]:
         if os.path.exists(nome_file):
@@ -39,9 +37,11 @@ def carica_ricette():
     if os.path.exists(FILE_RICETTE):
         try:
             with open(FILE_RICETTE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return []
+                dati = json.load(f)
+                if isinstance(dati, list):
+                    return dati
+        except Exception as e:
+            st.error(f"Errore nella lettura del file ricette: {e}")
     return []
 
 def salva_ricette(ricette):
@@ -146,23 +146,26 @@ with tab2:
 with tab1:
     st.subheader("📖 Consulta il tuo Ricettario Personale")
     
-    if len(st.session_state.ricette) == 0:
-        st.info("Il tuo ricettario è attualmente vuoto o in fase di ricaricamento.")
+    # Ricarica forzata dallo stato attuale o dal file
+    ricette_correnti = st.session_state.get("ricette", [])
+    
+    if len(ricette_correnti) == 0:
+        st.info("Il ricettario è vuoto o il file `ricette.json` non contiene ancora elementi.")
     else:
         col1, col2 = st.columns([2, 1])
         with col1:
             ricerca_query = st.text_input("🔍 Cerca ricetta (per nome o ingrediente):", "").lower()
         with col2:
-            categorie_presenti = list(set(r["categoria"] for r in st.session_state.ricette))
+            categorie_presenti = list(set(r.get("categoria", "Altro") for r in ricette_correnti))
             filtro_cat = st.selectbox("Filtra per categoria", ["Tutte"] + categorie_presenti)
         
         ricette_filtrate = []
-        for r in st.session_state.ricette:
-            match_categoria = (filtro_cat == "Tutte" or r["categoria"] == filtro_cat)
+        for r in ricette_correnti:
+            match_categoria = (filtro_cat == "Tutte" or r.get("categoria") == filtro_cat)
             match_query = (
-                ricerca_query in r["titolo"].lower() or 
-                ricerca_query in r["ingredienti"].lower() or 
-                ricerca_query in r["procedimento"].lower()
+                ricerca_query in r.get("titolo", "").lower() or 
+                ricerca_query in r.get("ingredienti", "").lower() or 
+                ricerca_query in r.get("procedimento", "").lower()
             )
             if match_categoria and match_query:
                 ricette_filtrate.append(r)
@@ -170,16 +173,17 @@ with tab1:
         if len(ricette_filtrate) == 0:
             st.warning("Nessuna ricetta corrisponde alla ricerca o al filtro selezionato.")
         else:
-            for idx, r in enumerate(st.session_state.ricette):
+            for idx, r in enumerate(ricette_correnti):
                 if r in ricette_filtrate:
-                    with st.expander(f"📌 {r['titolo']} ({r['categoria']})"):
-                        st.markdown(f"**Categoria:** {r['categoria']}")
+                    with st.expander(f"📌 {r.get('titolo', 'Senza titolo')} ({r.get('categoria', 'Generale')})"):
+                        st.markdown(f"**Categoria:** {r.get('categoria', 'Generale')}")
                         st.markdown("### 🛒 Ingredienti")
-                        st.text(r['ingredienti'])
+                        st.text(r.get('ingredienti', ''))
                         st.markdown("### 🍳 Procedimento")
-                        st.text(r['procedimento'])
+                        st.text(r.get('procedimento', ''))
                         
                         if st.button(f"🗑️ Elimina ricetta", key=f"del_{idx}"):
-                            st.session_state.ricette.pop(idx)
-                            salva_ricette(st.session_state.ricette)
+                            ricette_correnti.pop(idx)
+                            st.session_state.ricette = ricette_correnti
+                            salva_ricette(ricette_correnti)
                             st.rerun()
