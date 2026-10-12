@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Gestione del logo della barra laterale
+# Gestione del logo nella barra laterale
 with st.sidebar:
     for nome_file in ["favicon.jpg", "Logo.jpg", "logo.jpg", "logo.png"]:
         if os.path.exists(nome_file):
@@ -24,7 +24,7 @@ with st.sidebar:
                 pass
     st.markdown("---")
 
-# Configurazione della chiave API di Gemini dai Secrets
+# Configurazione API Gemini
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
@@ -33,16 +33,40 @@ else:
 # File per la persistenza dei dati
 FILE_RICETTE = "ricette.json"
 
+# Ricette predefinite per garantire che non vadano mai perse
+RICETTE_BASE = [
+    {
+        "titolo": "Crema di parmigiano 46 mesi",
+        "categoria": "Salse calde",
+        "ingredienti": "Parmigiano Reggiano 46 mesi, panna fresca / latte, pepe nero q.b.",
+        "procedimento": "Sciogliere a bagnomaria o a fuoco bassissimo il Parmigiano grattugiato finemente con la panna, frullare fino ad ottenere una crema liscia ed omogenea."
+    },
+    {
+        "titolo": "Maionese all'aneto",
+        "categoria": "Salse fredde",
+        "ingredienti": "Tuorli, olio di semi, aneto fresco tritato, succo di limone, sale",
+        "procedimento": "Emulsionare i tuorli montando a filo con l'olio di semi. Aggiungere il succo di limone, il sale e infine l'aneto fresco tritato finemente."
+    },
+    {
+        "titolo": "Spuma di patate e provola",
+        "categoria": "Salse calde",
+        "ingredienti": "Patate lesse, provola affumicata, latte/panna, burro, sale e pepe",
+        "procedimento": "Schiacciare le patate calde, sciogliere la provola nel latte caldo e unire il tutto. Frullare e passare al sifone con carica per spuma calda."
+    }
+]
+
 def carica_ricette():
     if os.path.exists(FILE_RICETTE):
         try:
             with open(FILE_RICETTE, "r", encoding="utf-8") as f:
                 dati = json.load(f)
-                if isinstance(dati, list):
+                if isinstance(dati, list) and len(dati) > 0:
                     return dati
-        except Exception as e:
-            st.error(f"Errore nella lettura del file ricette: {e}")
-    return []
+        except Exception:
+            pass
+    # Se il file non esiste o è vuoto, usa e salva le ricette base
+    salva_ricette(RICETTE_BASE)
+    return RICETTE_BASE
 
 def salva_ricette(ricette):
     try:
@@ -146,11 +170,10 @@ with tab2:
 with tab1:
     st.subheader("📖 Consulta il tuo Ricettario Personale")
     
-    # Ricarica forzata dallo stato attuale o dal file
-    ricette_correnti = st.session_state.get("ricette", [])
+    ricette_correnti = st.session_state.ricette
     
     if len(ricette_correnti) == 0:
-        st.info("Il ricettario è vuoto o il file `ricette.json` non contiene ancora elementi.")
+        st.info("Il ricettario è vuoto.")
     else:
         col1, col2 = st.columns([2, 1])
         with col1:
