@@ -7,22 +7,22 @@ import os
 # ==============================================================================
 # 🎨 PERSONALIZZA QUI TITOLO E ICONE
 # ==============================================================================
-TITOLO_APP = "ricettario personale alessio🔪📒"
-ICONA_PAGINA = "Logo.jpg"    # Icona visibile nella scheda del browser (punta all'immagine caricata)
-ICONA_TITOLO = ""      # Icona visibile accanto al titolo (già presente nel titolo)
+TITOLO_APP = "ricettario personale alessio"
 # ==============================================================================
 
-# Configurazione della pagina Streamlit
+# Configurazione della pagina Streamlit (usiamo l'emoji per la scheda del browser)
 st.set_page_config(
-    page_title=TITOLO_APP,
-    page_icon=ICONA_PAGINA,
+    page_title="Ricettario - Alessio Lanzetta",
+    page_icon="📖",
     layout="wide"
 )
 
-# Configurazione della barra laterale con il logo
+# Visualizzazione del Logo nella barra laterale (Sidebar)
 with st.sidebar:
     if os.path.exists("Logo.jpg"):
         st.image("Logo.jpg", use_container_width=True)
+    elif os.path.exists("logo.jpg"):
+        st.image("logo.jpg", use_container_width=True)
     st.markdown("---")
 
 # Configurazione della chiave API di Gemini dai Secrets di Streamlit
@@ -54,8 +54,15 @@ def salva_ricette(ricette):
 if "ricette" not in st.session_state:
     st.session_state.ricette = carica_ricette()
 
-# Titolo principale
-st.title(f"{TITOLO_APP}")
+# Intestazione principale con il Logo e il Titolo
+col_logo, col_titolo = st.columns([1, 4])
+with col_logo:
+    if os.path.exists("Logo.jpg"):
+        st.image("Logo.jpg", width=120)
+    elif os.path.exists("logo.jpg"):
+        st.image("logo.jpg", width=120)
+with col_titolo:
+    st.title("Ricettario Personale Alessio Lanzetta 🔪📒")
 
 # Menu a schede
 tab1, tab2 = st.tabs(["📖 Il mio Ricettario", "✨ Aggiungi / Modifica Ricetta"])
@@ -149,7 +156,6 @@ with tab1:
     if len(st.session_state.ricette) == 0:
         st.info("Il tuo ricettario è ancora vuoto. Aggiungi la tua prima ricetta dal tab a fianco!")
     else:
-        # Aggiunta della barra di ricerca e del filtro per categoria affiancati
         col1, col2 = st.columns([2, 1])
         with col1:
             ricerca_query = st.text_input("🔍 Cerca ricetta (per nome o ingrediente):", "").lower()
@@ -157,7 +163,6 @@ with tab1:
             categorie_presenti = list(set(r["categoria"] for r in st.session_state.ricette))
             filtro_cat = st.selectbox("Filtra per categoria", ["Tutte"] + categorie_presenti)
         
-        # Filtriamo le ricette in base alla ricerca e alla categoria selezionata
         ricette_filtrate = []
         for r in st.session_state.ricette:
             match_categoria = (filtro_cat == "Tutte" or r["categoria"] == filtro_cat)
@@ -173,7 +178,6 @@ with tab1:
             st.warning("Nessuna ricetta corrisponde alla ricerca o al filtro selezionato.")
         else:
             for idx, r in enumerate(st.session_state.ricette):
-                # Mostriamo solo quelle che passano il filtro
                 if r in ricette_filtrate:
                     with st.expander(f"📌 {r['titolo']} ({r['categoria']})"):
                         st.markdown(f"**Categoria:** {r['categoria']}")
