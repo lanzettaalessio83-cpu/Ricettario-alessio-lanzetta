@@ -8,7 +8,7 @@ import os
 # 🎨 PERSONALIZZA QUI TITOLO E ICONE
 # ==============================================================================
 TITOLO_APP = "ricettario personale alessio🔪📒"
-ICONA_PAGINA = "🔪"    # Icona visibile nella scheda del browser (o nome file tipo "logo.png")
+ICONA_PAGINA = "Logo.jpg"    # Icona visibile nella scheda del browser (punta all'immagine caricata)
 ICONA_TITOLO = ""      # Icona visibile accanto al titolo (già presente nel titolo)
 # ==============================================================================
 
@@ -18,6 +18,12 @@ st.set_page_config(
     page_icon=ICONA_PAGINA,
     layout="wide"
 )
+
+# Configurazione della barra laterale con il logo
+with st.sidebar:
+    if os.path.exists("Logo.jpg"):
+        st.image("Logo.jpg", use_container_width=True)
+    st.markdown("---")
 
 # Configurazione della chiave API di Gemini dai Secrets di Streamlit
 if "GEMINI_API_KEY" in st.secrets:
